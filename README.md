@@ -12,9 +12,9 @@
   - 매주 금요일 저녁 약 2시간 씩 진행
   - 2020년 1월 10일부터 6주 간 (_예정_)
   - 1회차 (2020년 1월 10일)
-    - [Chapter 1](https://github.com/code-villain/effective-unit-testing/tree/master/01_좋은_테스트의_약속)
-    - [Chapter 2](https://github.com/code-villain/effective-unit-testing/tree/master/02_좋은_테스트란?)
-    - [Chapter 3](https://github.com/code-villain/effective-unit-testing/tree/master/03_테스트_더블)
+    - [Chapter 1](https://github.com/code-villain/effective-unit-testing/tree/master/Chapter1)
+    - [Chapter 2](https://github.com/code-villain/effective-unit-testing/tree/master/Chapter2)
+    - [Chapter 3](https://github.com/code-villain/effective-unit-testing/tree/master/Chapter3)
   - 2회차 (2020년 1월 17일)
     - [Chapter 4](#)
   - 3회차 (2020년 1월 31일)
