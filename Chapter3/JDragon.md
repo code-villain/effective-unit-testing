@@ -72,11 +72,14 @@ private 필드를 노출하고, 필드의 상태를 알려주는 메서드를 �
 필드의 상태를 알려주는 테스트 전용 메서드를 테스트 코드에만 추가하면 된다.
 
 예) 제품코드 : Engine
+
+~~~
 public class TestEngine extends Engine {
   ...
   public boolean isRunning() {...}
 
 }
+~~~
 
 이러한 테스트 더블을 만들어주면 된다.
 
