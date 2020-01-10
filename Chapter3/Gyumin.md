@@ -247,3 +247,6 @@ public class TestTranslator {
 - 종속 객체를 고립시켰다면, 이제 그 객체에 접근할 방법이 필요하다.
     - **의존성 주입(Dependency Injection)**을 통해 종속 객체를 외부에서 안으로 집어넣는 방법이 좋다.
     - 생성자 주입 방식을 권장 (Translator 예제 참고)
+
+---
+- 스터디를 진행하면서 추가적으로 느낀점을 [Wiki(1주차 느낀점)](https://github.com/code-villain/effective-unit-testing/wiki/1%EC%A3%BC%EC%B0%A8-%EB%8A%90%EB%82%80%EC%A0%90)에 정리해두었다.
