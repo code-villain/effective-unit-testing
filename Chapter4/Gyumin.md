@@ -193,11 +193,6 @@ public class TestConfiguration {
 - 첫 테스트의 단언처럼 명시적으로 몇가지 유효한 인자를 전달받는 경우도 있지만, 인자가 없는 기본값일 수도 있다. 이 문제를 **여러 개의 테스트 클래스로 나눠서** 해결해본다.
 
 ```java
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 public abstract class AbstractConfigTestCase {
 	protected Configuration c;
 
@@ -262,13 +257,128 @@ public class TestConfigurationErrors extends AbstractConfigTestCase {
   - 나중에 코드를 수정하기 쉬워진다.
   - 코드가 뭘 하는 것인지, 어떤 시나리오가 빠져 있는지도 쉽게 파악할 수 있다.
   - 실수를 했을 때 잘못된 곳을 더 정확하게 집어준다.
-- 광역 단언과의 차이는 무엇이며, 개선 방법에는 어떤 차이가 있는가.
+- TODO: 광역 단언과의 차이는 무엇이며, 개선 방법에는 어떤 차이가 있는가.
 
 ---
 ## 쪼개진 논리 (Split logic)
+- 여러 곳으로 흩어진 테스트 코드는 인지 과부하를 과중시키고, 테스트의 의미와 의도를 파악하기 어렵게 만든다.
+- 무작정 쪼개는 건 곤란하다. 같은 속성을 공유하는 의미 있는 조각이 어디까지인지 신경 쓰면서 나눠야 한다.
+
+```java
+public class TestRuby {
+  private Ruby runtime;
+
+  @Before
+  void setUp() throws Exception {
+    runtime = Ruby.newInstance();
+  }
+
+  @Test
+  void testVarAndMet() throws Exception {
+    runtime.getLoadService().init(new ArrayList());
+    eval("load 'test/testVariableAndMethod.rb'");
+    assertThat(eval("puts($a)")).isEqualTo("Hello World");
+    assertThat(eval("puts $b")).isEqualTo("dlroW olleH");
+    assertThat(eval("puts $d.reverse, $c, $e.reverse")).isEqualTo("Hello World");
+    assertThat(eval("puts $f, \" \", $g, \" \", $h")).isEqualTo("135 20 3");
+  }
+}
+```
+- 위 테스트의 흩어짐 정도는 심각하다. 왜 puts $b가 "Hello World"의 역순을 반환해야 하는지 알 수가 없는데, 이는 testVariableAndMethod.rb라는 다른 **외부 데이터(파일)에 정보가 흩어져** 있기 때문이다.  
+(_testVariableAndMethod.rb 파일에는 a = String.new("Hello World") b = a.reverse 등의 변수 할당문들이 나열돼 있다._)
+- 이렇게 쪼개진 논리를 해결하는 가장 간단한 방법은, **필요한 외부 데이터와 코드를 모두 테스트 안으로 옮기는** 것이다.
+
+```java
+@Test
+void testVarAndMet() throws Exception {
+  runtime.getLoadService().init(new ArrayList());
+
+  AppendableFile script = withTempFile();
+  script.line("a = String.new('Hello World')");
+  script.line("b = a.reverse");
+  script.line("c = ' '");
+  script.line("d = 'Hello'.reverse");
+  ...
+  // (testVariableAndMethod.rb 내에 있는 내용 합치기)
+
+  eval("load '" + script.getAbsolutePath() + "'");
+  assertThat(eval("puts($a)")).isEqualTo("Hello World");
+  assertThat(eval("puts $b")).isEqualTo("dlroW olleH");
+  assertThat(eval("puts $d.reverse, $c, $e.reverse")).isEqualTo("Hello World");
+  assertThat(eval("puts $f, \" \", $g, \" \", $h")).isEqualTo("135 20 3");
+}
+```
+- 흩어졌던 정보를 테스트 메서드 안으로 합쳐서 '쪼개진 논리' 냄새를 해결했지만, 다중 인격과 셋업 설교 등의 다른 냄새를 풍긴다. **테스트를 둘로 나눠 다중 인격을 해결**해보자.
+- 쪼개진 논리 → 외부의 데이터와 코드를 모두 테스트 메서드 내부로 일단 옮기기 → 다중 인격 발생 → 여러 테스트 메서드로 나눠서 다중 인격 해결
+
+```java
+@Before
+void setUp() throws Exception {
+  runtime.getLoadService().init(new ArrayList());
+  script = withTempFile();
+}
+
+@Test
+void 변수_할당_테스트() throws Exception {
+  script.line("a = String.new('Hello')");
+  script.line("b = 'World'");
+  script.line("c = 1 + 2");
+  afterEvaluating(script);
+  assertThat(eval("puts(a)")).isEqualTo("Hello");
+  assertThat(eval("puts b")).isEqualTo("World");
+  assertThat(eval("puts $c")).isEqualTo("3");
+}
+
+@Test
+void 메서드_호출_테스트() throws Exception {
+  script.line("a = 'Hello'.reverse");
+  script.line("b = 'Hello'.length()");
+  script.line("c = ' abc '.trim(' ', '_')");
+  afterEvaluating(script);
+  assertThat(eval("puts a")).isEqualTo("olleH");
+  assertThat(eval("puts b")).isEqualTo("3");
+  assertThat(eval("puts c")).isEqualTo("_abc_");
+}
+
+private void afterEvaluating(AppendableFile sourceFile) throws Exception {
+  eval("load '" + sourceFile.getAbsolutePath() + "'");
+}
+```
+- 쪼개진 논리나 데이터를 독립 파일로 두는 것보다는, 그것을 사용하는 **테스트 메서드 안에** 두는 방법이 (일반적으로) 바람직하다. 쪼개진 논리를 수용하는 건 최후의 보루여야 한다.
+- _(p.113~114에 "데이터나 로직을 언제 통합해야 할까?"라는 내용이 있는데, 세부적인 내용은 잘 이해가 되지 않으나 결국 외부 데이터가 짧다면 통합하되 어려울 경우엔 독립 파일로 남겨 두라는 것이다. 다만 가벼이 여길 일은 아니므로 몇 가지 지침을 지켜야 한다.)_
 
 ---
 ## 매직 넘버 (Magic numbers)
+- 매직 넘버: 소스코드 중 **할당문이나 메서드 호출 등에 박혀 있는 숫자로 된 값**
+- 매직 넘버는 **뜻을 알 수 없기 때문에** 피해야 한다.
+- 따라서 매직 넘버를 **의미가 분명한 이름의 상수나 변수로 대체해서 읽기 쉬운 코드로** 만들어야 한다.
+```java
+public class BowlingGameTest {
+  @Test
+  void perfectGame() throws Exception {
+    roll(10, 12); // 10과 12는 무슨 뜻인가
+    assertThat(game.score()).isEqualTo(300);  // 결과는 왜 300이어야 하는가
+  }
+}
+```
+- 위 예제에서 10, 12, 300은 모두 매직 넘버에 해당한다.
+- 매직 넘버를 개선하는 방법은 크게 2가지가 있다.
+  - 첫번째는 **정적 상수나 지역 변수**로 바꿔주는 것이다. 이를테면 10을 `TEN_PINS`, 12를 `TWELVE_TIMES`와 같은 상수로 만들어주는 것이다. 가장 보편적인 방법이다.
+  - 두번째는 **메서드 방식**인데, 아래와 같다.
+
+```java
+public class BowlingGameTest {
+  @Test
+  void perfectGame() throws Exception {
+    roll(pins(10), times(12)); // 10과 12는 무슨 뜻인가
+    assertThat(game.score()).isEqualTo(300);  // 결과는 왜 300이어야 하는가
+  }
+
+  private int pins(int n) { return n; }
+  private int times(int n) { return n; }
+}
+```
+- 메서드 방식이 유리해지려면 매개변수에 들어갈 여러 개의 값에 대해 여러 개의 테스트를 만들어야 하겠다.
 
 ---
 ## 셋업 설교 (Setup sermon)
