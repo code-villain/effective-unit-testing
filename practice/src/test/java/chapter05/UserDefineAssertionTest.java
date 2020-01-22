@@ -1,11 +1,16 @@
 package chapter05;
 
+import domain.Counter;
 import domain.Dictionary;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class UserDefineAssertionTest {
 
@@ -29,5 +34,33 @@ public class UserDefineAssertionTest {
             }
         }
         Assert.fail("Iterator didn't contain " + key + " => " + value);
+    }
+
+    @Test
+    public void 동시접근테스트() throws Exception {
+        final Counter counter = new Counter();
+        final int numberOfThreads = 10;
+
+        final CountDownLatch allThreadsComplete = new CountDownLatch(numberOfThreads);
+
+        final int callsPerThread = 100;
+        final Set<Long> values = new HashSet<Long>();
+        Runnable runnable = new Runnable() {
+            public void run() {
+                for (int i = 0; i < callsPerThread; i++) {
+                    values.add(counter.getAndIncrement());
+                }
+                allThreadsComplete.countDown();
+            }
+        };
+
+        for (int i = 0; i < numberOfThreads; i++) {
+            new Thread(runnable).start();
+        }
+
+        allThreadsComplete.await(10, TimeUnit.SECONDS);
+
+        int expectedNoOfValues = numberOfThreads * callsPerThread;
+        Assert.assertEquals(expectedNoOfValues, values.size());
     }
 }
