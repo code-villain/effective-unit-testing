@@ -17,7 +17,7 @@
 - 결국 우리의 최우선 목표는 **코드를 읽기 쉽게 유지하여 읽는 이에게 그 의도와 기능을 명확히 전달**하는 것이다.
   - 이를 고려할 때, **가독성을 위해 일부러 중복을 남겨둬야 할 상황도 있다**는 것을 이해해야 한다.
 ### 중복의 종류
-- 상수 중복
+- **상수 중복** (Literal duplication)
   ```java
   public class TemplateTest {
     @Test
@@ -33,7 +33,7 @@
   ```
   - 각각의 테스트에서 빈 문자열과 "plaintext"가 두번 씩 사용되었다.
   - 상수 중복은 **지역 변수로 만들어서 제거**한다.
-- 구조 중복
+- **구조 중복** (Structural duplication)
   - 위의 상수 중복을 지역 변수로 만들어서 제거하면 다음과 같다.
   ```java
   public class TemplateTest {
@@ -69,70 +69,64 @@
     }
   }
   ```
-- 의미 중복
+- **의미 중복** (Semantic duplication)
   - **같은 기능이나 개념을 다른 방식으로 구현한 것**
   - 맨 눈으로는 찾기 어렵다.
-```java
-@Test
-void groupShouldContainTwoSupervisors() {
-  List<Employee> all = group.list();
-  List<Employee> employees = new ArrayList<>(all);
+  ```java
+  @Test
+  void groupShouldContainTwoSupervisors() {
+    List<Employee> all = group.list();
+    List<Employee> employees = new ArrayList<>(all);
 
-  Iterator<Employee> i = employees.iterator();
-  while (i.hasNext()) {
-    Employee employee = i.next();
-    if (!employee.isSupervisor()) {
-      i.remove();
+    Iterator<Employee> i = employees.iterator();
+    while (i.hasNext()) {
+      Employee employee = i.next();
+      if (!employee.isSupervisor()) {
+        i.remove();
+      }
     }
+    assertThat(employees.size()).isEqualTo(2);
   }
-  assertThat(employees.size()).isEqualTo(2);
-}
 
-@Test
-void groupShouldContainFiveNewcomers() {
-  List<Employee> newcomers = new ArrayList<>();
-  for (Employee employee : group.list()) {
-    DateTime oneYearAgo = DateTime.now().minusYears(1);
-    if (employee.startingDate().isAfter(oneYearAgo)) {
-      newcomers.add(employee);
+  @Test
+  void groupShouldContainFiveNewcomers() {
+    List<Employee> newcomers = new ArrayList<>();
+    for (Employee employee : group.list()) {
+      DateTime oneYearAgo = DateTime.now().minusYears(1);
+      if (employee.startingDate().isAfter(oneYearAgo)) {
+        newcomers.add(employee);
+      }
     }
+    assertThat(newcomers.size()).isEqualTo(5);
   }
-  assertThat(newcomers.size()).isEqualTo(5);
-}
-```
+  ```
 
-1. 구조 중복으로 바꾼다.
-2. 변수나 메서드를 추출하여 구조 중복을 제거한다.
+  1. 구조 중복으로 바꾼다.
+  ```java
+  @Test
+  public void groupShouldContainTwoSupervisors() {
+    List<Employee> supervisors = new ArrayList<>();
+    for (Employee employee : group.list()) {
+      if (employee.isSupervisor()) {
+        supervisors.add(employee);
+      }
+    }
+    assertThat(supervisors.size()).isEqualTo(2);
+  }
 
-```java
-@Test
-void groupShouldContainTwoSupervisors() {
-	List<Employee> all = group.list();
-	List<Employee> employees = new ArrayList<>(all);
-
-	// for문 사용
-	for (Employee employee : group.list()) {
-		if (!employee.isSupervisor()) {
-			employees.remove(employee);
-		}
-	}
-	// Collection 사용
-//		employees.removeIf(employee -> !employee.isSupervisor());
-	assertThat(employees.size()).isEqualTo(2);
-}
-
-@Test
-void groupShouldContainFiveNewcomers() {
-	List<Employee> newcomers = new ArrayList<>();
-	for (Employee employee : group.list()) {
-		LocalDateTime oneYearAgo = LocalDateTime.now().minusYears(1);
-		if (employee.startingDate().isAfter(oneYearAgo)) {	// 시작한 지 1년이 안됐을 경우
-			newcomers.add(employee);
-		}
-	}
-	assertThat(newcomers.size()).isEqualTo(5);
-}
-```
+  @Test
+  public void groupShouldContainFiveNewcomers() {
+    List<Employee> newcomers = new ArrayList<>();
+    for (Employee employee : group.list()) {
+      if (employee.isNewComer()) {
+        newcomers.add(employee);
+      }
+    }
+    assertThat(newcomers.size()).isEqualTo(5);
+  }
+  ```
+  2. 변수나 메서드를 추출하여 구조 중복을 제거한다.
+  - [예제 코드](https://github.com/gyumin-kim/)
 
 ---
 ## 조건부 로직
@@ -146,6 +140,7 @@ void groupShouldContainFiveNewcomers() {
   - 어쨌든 조건문을 모두 거쳐갈 테니, 그 안의 단언문도 당연히 실행될 것이라 착각하기 쉽다.
   - 하지만 실제로는 **하나도 실행되지 않을 수 있다**.
   - **그래도 테스트는 성공할 수도 있다**는 것이 큰 문제다.
+
 ### 개선 방법
 - 일단 간소화부터 시도하는 게 좋다.
   - 각 조건문에 해당하는 코드 블럭을 적절한 이름의 메서드로 추출하는 방법을 추천한다.
@@ -177,20 +172,38 @@ void groupShouldContainFiveNewcomers() {
   - 입출력 속도나 테스트 실행 당시의 CPU 부하 등 **컴퓨터의 성능**에 영향을 받는 테스트
   - **네트워크 자원**에 접근하는 테스트
 - 문제의 원인이 시간이라서 조금 기다려줘야 테스트가 성공하는 경우에, 흔히 `Thread#sleep`을 사용하는데 이는 좋지 않은 방법이다.
+
 ### 개선 방법
 1. 회피한다.
     - 비결정적인 모든 원인을 깔끔히 없애서 문제를 피해가는 것이다.
 2. 제어한다.
+    - 테스트 더블 활용
 3. 격리한다.
     - 문제의 원인을 회피하거나 제어할 방법을 찾지 못했다면, 골치 아픈 부분을 코드 베이스에서 가능한 좁은 구석으로 격리해보자.
 
 ---
 ## 파손된 파일 경로
+- (특정 컴퓨터나 OS에서만 돌아가는) **절대경로**를 포함하는 테스트
 
+### 개선 방법
+- 일단 **테스트 코드에서 파일을 다룰 때, 절대 경로는 무조건 피해야 한다**. 모두 없애는 게 기본 원칙이다.
+- 가능하면 반드시 **상대 경로**를 쓰고, 정 안되면 시스템 속성이나 환경 변수로 한 단계 더 추상화하여 접근한다.
+- 기본적으로, **프로젝트에 필요한 모든 자원은 프로젝트 루트 디렉터리의 하위에** 두는 것을 원칙으로 하라.
+  - 그리고 **테스트 코드에서만 사용하는 데이터 파일은 테스트 코드와 같은 위치에 두고 클래스 패스로 접근**하면 편하다.
 
 ---
 ## 끈질긴 임시 파일
+- 임시 파일이 임시적이지 않고 끈적진 경우
+  - 즉, **다음번 테스트를 수행할 때까지도 지워지지 않고 버티고 있는** 상황
+- 사실은 테스트 목적 상 꼭 필요한 경우만 아니라면, **파일을 절대 사용하지 않는 것이 가장 좋다**.
 
+### 개선 방법
+- 일단 **파일 사용은 무조건 최소한으로 자제**해야 한다.
+  - 파일 I/O로 인해 테스트가 현저히 느려진다.
+- 임시 파일은 사실 그리 임시적이지 않다.
+1. @Before 메서드에서, 테스트 메서드가 실행되기 전에 매번 파일을 삭제한다.
+2. File#createTempFile을 사용하여 임시 파일명을 고유하게 만든다.
+3. 파일이 있어야 하는지를 명시한다.
 
 ---
 ## 잠자는 달팽이
