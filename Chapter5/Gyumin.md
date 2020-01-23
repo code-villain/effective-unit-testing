@@ -126,7 +126,7 @@
   }
   ```
   2. 변수나 메서드를 추출하여 구조 중복을 제거한다.
-  - [예제 코드](https://github.com/gyumin-kim/)
+  - [예제 코드](https://github.com/gyumin-kim/java-examples/tree/master/src/test/java/com/gyumin/javaExamples/EffectiveUnitTesting/semanticDuplication)
 
 ---
 ## 조건부 로직
