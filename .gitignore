@@ -73,3 +73,8 @@ fabric.properties
 
 /.idea/*
 /practice/target/*
+practice/.settings/*
+practice/.classpath
+practice/.factorypath
+practice/.project
+.project
