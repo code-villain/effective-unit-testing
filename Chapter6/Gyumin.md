@@ -172,7 +172,53 @@ void knowsTheSystemDownloadDirectory() throws Exception {
   - `Platform.current()`은 테스트를 돌리는 플랫폼의 정보를 받아오는 것이므로, 결국 if-else절 중 단 하나에 대해서만 테스트가 동작할 것이다.
 
 ### 개선 방법
+- 플랫폼별로 테스트를 여러 개로 나눠서, 각각의 경로를 외부로 노출한다.
+- JUnit의 Assumption(가정) API를 활용한다.
+  - 가정과 다르면 해당 테스트는 더 진행되지 않는다.
+```java
+public class TestConfiguration {
+  Platform platform;
+  String downloadsDir;
 
+  @Before
+  void setUp() {
+    platform = Platform.current();  // 아직 해결되지 않은 부분
+  }
+
+  @Test
+  void knowsTheSystemDownloadDirectoryOnMacOsX() {
+    assumeTrue(platform.isMac()); // 의도하지 않은 플랫폼에서는 테스트를 중단
+    assertThat(...);
+  }
+
+  @Test
+  void knowsTheSystemDownloadDirectoryOnWindows() {
+    assumeTrue(platform.isWindows()); // 의도하지 않은 플랫폼에서는 테스트를 중단
+    assertThat(...);
+  }
+}
+```
+- 다만 `Platform.current()` 코드가 남아 있다. 즉 지금 테스트를 실행하는 플랫폼에 대해서만 테스트가 가능하다는 문제는 여전하다.
+  - 제품 코드의 **설계 자체가 문제**가 있음을 알 수 있다.
+  - **이 테스트 냄새는 제품 코드의 리팩토링이 필요하다는 신호**로 받아 들이자.
+```java
+@Test
+void knowsTheSystemDownloadDirectoryOnMacOsX() throws Exception {
+  String downloadsDir = new MacOsX().downloadDir();
+  assertThat(...);
+}
+
+@Test
+void knowsTheSystemDownloadDirectoryOnWindows() throws Exception {
+  String downloadsDir = new Windows().downloadDir();
+  assertThat(...);
+}
+```
+- 플랫폼 편견 냄새는 **테스트를 간소화하여 각각의 테스트가 자신에게 필요한 플랫폼을 직접 생성**하도록 리팩토링하면 된다.
+- 위 코드에서는 `Platform`의 하위 클래스를 각각의 테스트가 직접 생성한다. 
+  - 즉 Platform의 하위 클래스로 MacOsX, Windows, Linux 등을 따로 두도록 제품 코드의 설계를 변경했다.
+- 따라서 모든 플랫폼에 대한 테스트를 정상적으로 수행할 수 있게 되었다.
+- `Platform.current()`의 동작은 다른 테스트에서 별도로 진행하면 된다.
 
 ### Assumption API
 - Assumption(Junit 4 기준)이 실패하면 해당 테스트는 더 이상 진행되지 않으며, 결과적으로 테스트는 성공으로 처리된다.
