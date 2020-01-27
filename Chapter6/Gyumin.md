@@ -227,3 +227,34 @@ void knowsTheSystemDownloadDirectoryOnWindows() throws Exception {
 
 ---
 ## 조건부 테스트
+- 테스트 안에 숨겨진 **조건 때문에 테스트의 이름이 의미하는 것과 다르게 동작**하는 테스트
+```java
+@Test
+public void multipleArgumentsAreSentToShell() throws Exception {
+  ...
+
+  if (process.exitCode() == 0) {
+    assertThat(process.output().trim()).isEqualTo("hello.txt");
+  }
+}
+```
+- if문의 조건이 거짓일 경우에는 단언문이 아예 실행되지 않으면서 테스트가 성공해버린다.
+- 테스트는 실패해야 할 땐 실패해야 한다.
+```java
+public void multipleArgumentsAreSentToShell() throws Exception {
+  ...
+
+  assertThat(process.exitCode()).isEqualTo(0);  // 가정 내용을 명시적으로 확인하는 단언문
+  assertThat(process.output().trim()).isEqualTo("hello.txt");
+}
+```
+- 그런데, 원래 테스트에서 조건문이 들어있다는 것은 **잠재적으로 하나 이상의 서로 다른 결과를 의도**했다는 뜻이다. 따라서 **각각을 독립된 테스트로 분리**하는 것이 옳다.
+```java
+public void returnsNonZeroExitCodeForFailedCommands() throws Exception {
+  ... // 위 테스트와는 다른 arguments
+
+  assertThat(process.exitCode()).isGreaterThan(0);
+}
+```
+- 위 테스트를 추가함으로써, '종료 코드(exitCode)가 0이길 기대하는 경우'와 '0이 아니길 기대하는 경우'에 대해 모두 테스트를 갖게 되었다.
+- **테스트에서 if를 써야 할 이유는 거의 없다**. ~~조건절~~보다는 **가정 내용을 명시적으로 확인하는 단언문**을 대신 사용하는 것이 좋다.
