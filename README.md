@@ -20,11 +20,10 @@
   - 3회차 (2020년 1월 22일)
     - [Chapter 5](https://github.com/code-villain/effective-unit-testing/tree/master/Chapter5)
   - 4회차 (2020년 1월 31일)
-    - [Chapter 6](#)
+    - [Chapter 6](https://github.com/code-villain/effective-unit-testing/tree/master/Chapter6)
+    - [Chapter 7](https://github.com/code-villain/effective-unit-testing/tree/master/Chapter7)
   - 5회차 (2020년 2월 7일)
-    - [Chapter 7](#)
     - [Chapter 8](#)
-  - 6회차 (2020년 2월 14일)
     - [Chapter 9](#)
     - 부록
 - 방식
